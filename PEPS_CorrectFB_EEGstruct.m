@@ -1,15 +1,27 @@
 % PEPS_CorrectFB_EEGstruct()
+% Programmed by: Deirdre Bolger
+% This corrects the current subject's event's structure based on the
+% pre-defined feedback onsets in the excel file.
+% The resulting *.set file has the post-fix "trigcorr" added.
+%************************************************
+
 close all
 clear all
-dirIn = fullfile(filesep,'Users','bolger','Documents','work','Projects','Project-PEPs','PEPs_Preprocess_Subjects','s01',filesep);
-vidnum = 'Film4';
-video_name = 'Curare_Human_Incongruent';
+sujcurr = 's01';
+vidnum = 'Film3';
+video_name = 'Reg_Agent_Incongruent';
+
+dirgen = fullfile(filesep,'Volumes','deepassport','Projects','Project-PEPs','PEPS-protocol-phase2',...
+    'PEPs_DataPreproc_2021',sujcurr);
+dirIn = fullfile(dirgen,strcat(sujcurr,'-',vidnum),filesep);
+load(fullfile(dirgen,'feedback_summary_correct.mat'));
+tableIn = feedbacks{1,str2double(vidnum(end))};
+
+
 allfiles= dir(dirIn);
 fileIndex = find(~[allfiles.isdir]);
-fileeeg = dir(strcat(dirIn,['*',vidnum,'.set']));
-filetxt = dir(strcat(dirIn,['*',vidnum,'.txt']));
+fileeeg = dir(strcat(dirIn,['*.set']));
 
-tableIn = readtable(fullfile(dirIn,filetxt.name));   %Read in textfile with feedback onset times and names.
 
 % Open EEGLAB session and load in the corresponding *.set file.
 [ALLEEG, EEG, CURRENTSET, ALLCOM] = eeglab;
@@ -21,21 +33,25 @@ EEG = pop_loadset(fullfile(dirIn,fileeeg.name));
 eeglab redraw
 
 
-for i = 1:length(EEG.event)
+for i = 1:size(tableIn,1)     %length(EEG.event)
     
-    if i>length(tableIn{:,1})
-        EEG.event(i).latency=[]
+    if i > length(tableIn{:,1})
+
+        EEG.event(i).latency = [];
         EEG.event(i).type=[];
         EEG.event(i).urevent=[];
         EEG.event(i).trialnum=[];
+          
     else
         
         if i==1
             
-            EEG.event(i).latency = tableIn{i,1}*EEG.srate;
+            EEG.event(i).latency = dsearchn(EEG.times',tableIn{i,1}*1000);  
+            EEG.event(i).etimes = ([EEG.event(i).latency]-1)/EEG.srate;
         else
-            addon = tableIn{i-1,4}*EEG.srate;
+            addon = (tableIn{i-1,4}+tableIn{i-1,5})*EEG.srate;
             EEG.event(i).latency = EEG.event(i-1).latency+addon;
+            EEG.event(i).etimes = ([EEG.event(i).latency]-1)/EEG.srate;
         end
         
         EEG.event(i).type = char(tableIn{i,2});

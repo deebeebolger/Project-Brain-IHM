@@ -9,10 +9,10 @@
 % photodiode signal is not always very clean.
 %**************************************************************************
 
-xlfile_in = fullfile(filesep,'Users','bolger','Documents','work','Projects','Project-PEPs','Brain-IHM-feedback-trigger-check.xlsx');
-sheetnom = 'Curare-Agent-Incongruent';
+xlfile_in = fullfile(filesep,'Users','bolger','Documents','work','Projects','Project-PEPs','Excel-files','Brain-IHM-feedback-trigger-check.xlsx');
+sheetnom = 'Curare-Human-Congruent';
 XIn = readtable(xlfile_in,'FileType','spreadsheet', 'sheet',sheetnom, 'ReadVariableNames',1, 'ReadRowNames',0,...
-        'TreatAsEmpty','NA', 'Range','C1:E65');
+        'TreatAsEmpty','NA', 'Range','C1:D99');
 display(XIn);
  
 if size(XIn,2)>2                % For the incongruent videos
