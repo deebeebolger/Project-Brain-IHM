@@ -1,0 +1,289 @@
+%% Script PEPs_plotERP
+% Date: 3/3/2021         Programmed by: Deirdre Bolger
+%
+%*************************************************************************************
+
+[paramfile_nom, paramfile_path] = uigetfile('*.txt','Select a Parameters text-file');  %Load in the parameters textfile with ERP plotting parameters.
+
+fid = fopen(fullfile(paramfile_path,paramfile_nom));
+C = textscan(fid, '%s','Delimiter',',','CommentStyle','//');
+fclose(fid);
+
+params = C{1,1};                         %Extract the contents of the parameters file.
+line1 = string(split(params{1,1},' '));  %video_names
+line2 = string(split(params{2,1},' '));  %video_types
+line3 = string(split(params{3,1},' '));  %video_subject
+line4 = string(split(params{4,1},' '));  %feedback_type
+line5 = split(params{5,1},' ');
+line6 = split(params{6,1},' ');
+line7 = split(params{7,1},' ');          %Defines the path to the chaninfo mat file. 
+chaninfo = load(line7{2,1},'chaninfo');   %loads in a 1 X 72 structure
+chaninfo = chaninfo.chaninfo;
+
+[indx1,tf1] = listdlg('PromptString',{'Select datasets for condition 1.',...
+    'You can select several items at once.',''},...
+    'SelectionMode','multiple','ListString',line1(2:end,1));
+
+[indx2,tf2] = listdlg('PromptString',{'Select datasets for condition 2.',...
+    'You can select several items at once.',''},...
+    'SelectionMode','multiple','ListString',line1(2:end,1));
+
+vidall = line1(2:end-1,1);
+vidcond1 = vidall(indx1,1);  % Videos for condition1
+
+if ~strcmp(vidall(indx2,1),'None')
+    vidcond2 = vidall(indx2,1);  % Videos for condition2
+else
+    vidcond2 = [];
+end
+
+%% Access the data for the defined conditions
+patients = {'Human','Agent'};
+condcong = {'incong','incong'};  % The congruous condition to select for each dataset being compared.
+condnames = {[patients{1,1},'-',condcong{1,1}],[patients{1,2},'-',condcong{1,2}]};
+fbk_oi = 'Enonce-lexicalise';
+fbk_action = 'rej';  % or keep
+
+[ALLEEG EEG CURRENTSET ALLCOM] = eeglab;  %Open EEGLAB
+GrandAvg1 = cell(length(vidcond1),1);
+indx2exl_v1 = cell(length(vidcond1),1);
+indx2exl_v2 = cell(length(vidcond1),1);
+
+for vidcntr = 1:length(vidcond1)
+    ALLEEG = [];
+    pathcurr = fullfile(line6{2,1},vidcond1(vidcntr,1),'BLCorrected',filesep);
+    f = dir(fullfile(pathcurr));
+    fnoms = {f.name};
+    f1 = contains(fnoms,condcong{1,1});
+    filenoms_all = {fnoms{f1}};
+    filenoms = {filenoms_all{contains(filenoms_all,'.set')}};
+    EEG = pop_loadset('filename',filenoms,'filepath',char(pathcurr));
+    [ALLEEG, EEG, CURRENTSET] = eeg_store( ALLEEG, EEG, 0 );
+    eeglab redraw;
+    
+    % Need to find the grand average for each dataset here...
+    if vidcntr == 1
+        time = ALLEEG(vidcntr).times;
+        chanscurr = ALLEEG(vidcntr).chanlocs;
+    end
+    
+    Dall = {ALLEEG(:).data};
+    indx2exl_v1 = cell(length(filenoms),1);
+    
+    
+    for dscount = 1:length(filenoms)
+        if isfield(ALLEEG(dscount).event,'feedback')
+            if strcmp(fbk_action,'rej')
+                indx2exl_v1{dscount,1} = find(~contains([ALLEEG(dscount).event.feedback],fbk_oi));
+            elseif strcmp(fbk_action,'keep')
+                indx2exl_v1{dscount,1} = find(contains([ALLEEG(dscount).event.feedback],fbk_oi));
+            end
+            if ~isempty(indx2exl_v1{dscount,1})
+                Dall{1,dscount} = Dall{1,dscount}(:,:,indx2exl_v1{dscount,1});
+            else
+                Dall{1,dscount} = Dall{1,dscount};
+            end
+        else
+            print('0Oops! Feedback field does not exist in current dataset.');
+        end
+        
+    end
+    
+    Dmean_curr = cell2mat(cellfun(@(x) mean(x,3),Dall,'UniformOutput',false));
+    Dmean_curr = reshape(Dmean_curr,[size(Dall{1,1},1),size(Dall{1,1},2),length(ALLEEG)]);
+    GrandAvg1{vidcntr,1} = Dmean_curr;
+    if vidcntr==1
+        DMCond1 = Dmean_curr;
+    elseif vidcntr>1
+        DMCond1 = cat(3,DMCond1,Dmean_curr);
+    end
+end
+
+
+if ~isempty(vidcond2)   % if we have defined a second condition dataset
+    GrandAvg2 = cell(length(vidcond2),1);
+    for vidcntr1 = 1:length(vidcond2)
+        ALLEEG = [];
+        pathcurr = fullfile(line6{2,1},vidcond2(vidcntr1,1),'BLCorrected',filesep);
+        f = dir(fullfile(pathcurr));
+        fnoms = {f.name};
+        f1 = contains(fnoms,condcong{1,2});
+        filenoms_all = {fnoms{f1}};
+        filenoms = {filenoms_all{contains(filenoms_all,'.set')}};
+        EEG = pop_loadset('filename',filenoms,'filepath',char(pathcurr));
+        [ALLEEG, EEG, CURRENTSET] = eeg_store( ALLEEG, EEG, 0 );
+        eeglab redraw;
+        % Need to find the grand average for each dataset here...
+        
+        Dall2 = {ALLEEG(:).data};
+        indx2exl_v2 = cell(length(filenoms),1);
+        
+        for dscount = 1:length(filenoms)
+            if isfield(ALLEEG(dscount).event,'feedback')
+                if strcmp(fbk_action,'rej')
+                    indx2exl_v2{dscount,1} = find(~contains([ALLEEG(dscount).event.feedback],fbk_oi));
+                elseif strcmp(fbk_action,'keep')
+                    indx2exl_v2{dscount,1} = find(contains([ALLEEG(dscount).event.feedback],fbk_oi));
+                end
+                if ~isempty(indx2exl_v2{dscount,1})
+                    Dall2{1,dscount} = Dall2{1,dscount}(:,:,indx2exl_v2{dscount,1});
+                else
+                    Dall2{1,dscount} = Dall2{1,dscount};
+                end
+            else
+                print('0Oops! Feedback field does not exist in current dataset.');
+                Dall2{1}
+            end
+        end
+        
+        Dmean_curr2 = cell2mat(cellfun(@(x) mean(x,3),Dall2,'UniformOutput',false));
+        Dmean_curr2 = reshape(Dmean_curr2,[size(Dall2{1,1},1),size(Dall2{1,1},2),length(ALLEEG)]);
+        GrandAvg2{vidcntr1,1} = Dmean_curr2;
+        if vidcntr1==1
+            DMCond2 = Dmean_curr2;
+        elseif vidcntr1>1
+            DMCond2 = cat(3,DMCond2,Dmean_curr2);
+        end
+    end
+end
+
+%% Find the grand average activity over all subjects for each video and each condition.
+
+Data2plot = cell(1,2);
+Data2plot{1,1} = mean(DMCond1,3); % The mean over all the subjects for each condition
+Data2plot{1,2} = mean(DMCond2,3);
+
+Data2plot_subs = cell(1,2);
+Data2plot_subs{1,1} = DMCond1;
+Data2plot_subs{1,2} = DMCond2;
+
+%% Define the channels of interest
+[Eindx,Etf] = listdlg('PromptString',{'Select electrodes to plot.',...
+    'You can select several electrodes at once.',''},...
+    'SelectionMode','multiple','ListString',{chanscurr.labels});  %Eindx gives the indices of the selected channels
+
+%% Define the configuration of the ERP plot.
+
+prompt = 'How do you want me to configure the ERP data: "electrode" or "grid" ?'; 
+dlgtitre = 'Specify ERP Layout';
+dims = [1 80];
+answr = inputdlg(prompt,dlgtitre,dims);
+
+%% PLOTTING
+
+allchans = length(Eindx);  % The number of channels to plot;
+notmtchans = Eindx;         % The indices of the channels to plot. 
+chanoi = {chanscurr(Eindx).labels};
+t = time;
+colrs=[ones(1,3).*[0.4 0.15 0.15];ones(1,3).*[0.4 0.4 0.4];ones(1,3).*[0 0.6 0.5];ones(1,3).*[0.2 0.1 0.8]];
+
+if strcmp(answr{1,1},'electrode')
+
+    % SET UP ELECTRODE CONFIGURATION
+
+    hndl=figure; set(hndl,'PaperUnits','normalized','Position',[680 417 727 681],'Color',[1 1 1]);
+    orient portrait; axis ('normal')
+    
+    xvals=zeros(allchans,1);
+    yvals=zeros(allchans,1);
+    pwidth    = 0.8;     % 0.75, width and height of plot array on figure
+    pheight   = 0.8;
+    axwidth=0.07;
+    axheight=0.08;
+    
+    %Read in channel locations file
+    [elocs,titres,theta,rads,inds]=readlocs(chaninfo(notmtchans));
+    channoms= strvcat(chaninfo(1:allchans).labels);
+    Th=pi/180*theta;           %convert degrees to radians
+    
+    %Convert from polar to cartesian
+    [ycart,xcart]=pol2cart(Th,rads);
+    xvals(notmtchans) = ycart;
+    yvals(notmtchans) = xcart;
+    
+    %Find the positions of all the channels
+    mtchans = setdiff(1:allchans,notmtchans);        %find the channels indices common to both
+    allchans_sqrt = floor(sqrt(allchans))+1;
+    
+    for i=1:length(mtchans)
+        
+        xvals(mtchans(i))=0.5+0.2*floor((i-1)/74);  %allchans - x axes
+        yvals(mtchans(i))=-0.2+mod(i-1,allchans)/74;   %allchans - y axes
+        
+    end
+    
+    channoms2=channoms(1:allchans,:);
+    xvals = xvals(1:allchans);
+    yvals = yvals(1:allchans);
+    
+    if length(xvals) > 1
+        if length(unique(xvals)) > 1
+            gcapos = get(gca,'Position'); axis off;
+            xvals = (xvals-mean([max(xvals) min(xvals)]))/(max(xvals)-min(xvals)); % this recenters
+            xvals = gcapos(1)+gcapos(3)/2+pwidth*xvals;  %this controls width of plot
+        end
+    end
+    
+    gcapos = get(gca,'Position'); axis off;
+    yvals = gcapos(2)+gcapos(4)/2+pheight*yvals;  % controls height of plot
+    
+    
+    ho=zeros(length(chanoi),1);
+    sig_elecs = zeros(length(chanoi),length(t));
+    sig_times = cell(length(chanoi),1);
+    nosigs=0;
+    pvalue_corr = cell(length(chanoi),1);
+    tvals = cell(length(chanoi),1);
+    
+    %% PLOT THE DATA IN 10-20 CONFIGURATION
+    
+    axs = zeros(2,1);   %initialise the axes
+    linz = zeros(2,1);  %initialise the line object
+    toperm = cell(1,2);
+    legnoms = cell(1,2); %initialise the legend names cell string array
+    
+    Axes = [];
+    
+    for chancnt =1:length(chanoi)
+        
+        xcenter(chancnt) = xvals(notmtchans(chancnt));
+        ycenter(chancnt) = yvals(notmtchans(chancnt));
+        Axes = [Axes axes('Units','normalized','Position', [ycenter(chancnt)-axheight/2 xcenter(chancnt)-axwidth/2 axheight axwidth])];
+        hold on;
+        
+        for dcnt = 1:size(Data2plot,2)     % for each condition
+            Dcurr = [];
+            Dcurr = Data2plot{1,dcnt}(chancnt,:)';
+            ploth1 = plot(time,Dcurr,'Color',colrs(dcnt,:));   %Call of plotConfInt2() function to calculate and plot the 95% CI (sem)
+            axs1 = gca;
+            hold on
+            axs(dcnt) = axs1;
+            linz(dcnt) = ploth1;
+            toperm{1,dcnt} = squeeze(Data2plot_subs{1,dcnt}(chancnt,:,:));
+            legnoms{1,dcnt} = condnames{1,dcnt};
+            
+        end
+        
+        set(axs1,'YDir','reverse','XAxisLocation','origin','YAxisLocation','origin','Box','off',...
+            'YGrid','off','XGrid','off') % Set the current axis properties
+        title(chanoi{1,chancnt})
+        [tvals_curr,pvalue_corr,permout]=plot_perm(toperm,time,3,[time(1) time(end)],'no');  %Call of function to carry out permutation t-test with fdr correction.
+        
+        set(hndl,'CurrentAxes',Axes(chancnt));
+        set(Axes(chancnt),'HitTest','on','SelectionHighlight','on','UserData',{chancnt, squeeze(Data2plot_subs{1,1}(chancnt,:,:)),squeeze(Data2plot_subs{1,2}(chancnt,:,:)),...
+            colrs, time, legnoms, chanoi, toperm},'NextPlot','add');
+        set(Axes(chancnt),'ButtonDownFcn',@plotsingleL2gender_pe2)
+        
+        if chancnt == 1
+            legend(linz,legnoms,'Position',[0.1 0.75 0.2 0.1],'FontSize',14,'Box','off');
+        end
+        
+    end  % end of chancnt loop
+end  % 
+    
+
+
+%% 
+
+    
+    

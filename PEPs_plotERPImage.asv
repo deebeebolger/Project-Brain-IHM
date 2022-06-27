@@ -1,0 +1,159 @@
+%% Script PEPs_plotERPImage
+% Date: 3/3/2021         Programmed by: Deirdre Bolger
+%
+%*************************************************************************************
+
+[paramfile_nom, paramfile_path] = uigetfile('*.txt','Select a Parameters text-file');  %Load in the parameters textfile with ERP plotting parameters.
+
+fid = fopen(fullfile(paramfile_path,paramfile_nom));
+C = textscan(fid, '%s','Delimiter',',','CommentStyle','//');
+fclose(fid);
+
+params = C{1,1};                         %Extract the contents of the parameters file.
+line1 = string(split(params{1,1},' '));  %video_names
+line2 = string(split(params{2,1},' '));  %video_types
+line3 = string(split(params{3,1},' '));  %video_subject
+line4 = string(split(params{4,1},' '));  %feedback_type
+line5 = split(params{5,1},' ');
+line6 = split(params{6,1},' ');
+line7 = split(params{7,1},' ');          %Defines the path to the chaninfo mat file. 
+chaninfo = load(line7{2,1},'chaninfo');   %loads in a 1 X 72 structure
+chaninfo = chaninfo.chaninfo;
+
+[indx1,tf1] = listdlg('PromptString',{'Select datasets for condition 1.',...
+    'You can select several items at once.',''},...
+    'SelectionMode','multiple','ListString',line1(2:end,1));
+
+[indx2,tf2] = listdlg('PromptString',{'Select datasets for condition 2.',...
+    'You can select several items at once.',''},...
+    'SelectionMode','multiple','ListString',line1(2:end,1));
+
+vidall = line1(2:end-1,1);
+vidcond1 = vidall(indx1,1);  % Videos for condition1
+
+if ~strcmp(vidall(indx2,1),'None')
+    vidcond2 = vidall(indx2,1);  % Videos for condition2
+else
+    vidcond2 = [];
+end
+
+%% Access the data for the defined conditions
+
+patients = {'Human','Agent'};
+condcong = {'cong','cong'};  % The congruous condition to select for each dataset being compared.
+condnames = {[patients{1,1},'-',condcong{1,1}],[patients{1,2},'-',condcong{1,2}]};
+fbk_oi = 'Enonce-lexicalise';   % Enonce-lexicalise
+fbk_action = 'rej';  % or keep
+chanoi = 'Cz';
+
+[ALLEEG EEG CURRENTSET ALLCOM] = eeglab;  %Open EEGLAB
+GrandAvg1 = cell(length(vidcond1),1);
+indx2exl_v1 = cell(length(vidcond1),1);
+indx2exl_v2 = cell(length(vidcond1),1);
+
+for vidcntr = 1:length(vidcond1)
+    ALLEEG = [];
+    pathcurr = fullfile(line6{2,1},vidcond1(vidcntr,1),'BLCorrected',filesep);
+    f = dir(fullfile(pathcurr));
+    fnoms = {f.name};
+    f1 = contains(fnoms,condcong{1,1});
+    filenoms_all = {fnoms{f1}};
+    filenoms = {filenoms_all{contains(filenoms_all,'.set')}};
+    EEG = pop_loadset('filename',filenoms,'filepath',char(pathcurr));
+    [ALLEEG, EEG, CURRENTSET] = eeg_store( ALLEEG, EEG, 0 );
+    eeglab redraw;
+    
+    if vidcntr == 1
+        time = ALLEEG(vidcntr).times;
+        chanscurr = ALLEEG(vidcntr).chanlocs;
+        chanoi_ind = contains({chanscurr.labels},chanoi)
+    end
+    
+    Dall = {ALLEEG(:).data};
+    indx2exl_v1 = cell(length(filenoms),1);
+    trialnum_vid1 = 0;
+    
+    if ~strcmp(condcong{1,1},'incong')
+        for dscount = 1:length(filenoms)
+            if isfield(ALLEEG(dscount).event,'feedback')
+                if strcmp(fbk_action,'rej')
+                    indx2exl_v1{dscount,1} = find(~contains([ALLEEG(dscount).event.feedback],fbk_oi));
+                elseif strcmp(fbk_action,'keep')
+                    indx2exl_v1{dscount,1} = find(contains([ALLEEG(dscount).event.feedback],fbk_oi));
+                end
+                if ~isempty(indx2exl_v1{dscount,1})
+                    Dall{1,dscount} = Dall{1,dscount}(:,:,indx2exl_v1{dscount,1});
+                else
+                    Dall{1,dscount} = Dall{1,dscount};
+                end
+            else
+                disp('0Oops! Feedback field does not exist in current dataset.');
+                Dall{1,dscount} = Dall{1,dscount};
+                indx2exl_v1{dscount,1} = [];
+            end
+            trialnum_vid1 = trialnum_vid1 + size(Dall{1,dscount}, 3);
+        end
+    else
+        for dscount1 = 1:length(filenoms)
+            
+            trialnum_vid1 = trialnum_vid1 + size(Dall{1,dscount1},3);
+            
+        end
+    end
+    
+    
+end   % end of vidcntr
+
+
+if ~isempty(vidcond2)   % if we have defined a second condition dataset
+    GrandAvg2 = cell(length(vidcond2),1);
+    for vidcntr1 = 1:length(vidcond2)
+        ALLEEG = [];
+        pathcurr = fullfile(line6{2,1},vidcond2(vidcntr1,1),'BLCorrected',filesep);
+        f = dir(fullfile(pathcurr));
+        fnoms = {f.name};
+        f1 = contains(fnoms,condcong{1,2});
+        filenoms_all = {fnoms{f1}};
+        filenoms = {filenoms_all{contains(filenoms_all,'.set')}};
+        EEG = pop_loadset('filename',filenoms,'filepath',char(pathcurr));
+        [ALLEEG, EEG, CURRENTSET] = eeg_store( ALLEEG, EEG, 0 );
+        eeglab redraw;
+        % Need to find the grand average for each dataset here...
+        
+        Dall2 = {ALLEEG(:).data};
+        indx2exl_v2 = cell(length(filenoms),1);
+        trialnum_vid2 = 0;
+        
+        
+        if ~strcmp(condcong{1,2},'incong')
+            for dscount = 1:length(filenoms)
+                if isfield(ALLEEG(dscount).event,'feedback')
+                    if strcmp(fbk_action,'rej')
+                        indx2exl_v2{dscount,1} = find(~contains([ALLEEG(dscount).event.feedback],fbk_oi));
+                    elseif strcmp(fbk_action,'keep')
+                        indx2exl_v2{dscount,1} = find(contains([ALLEEG(dscount).event.feedback],fbk_oi));
+                    end
+                    if ~isempty(indx2exl_v2{dscount,1})
+                        Dall2{1,dscount} = Dall2{1,dscount}(:,:,indx2exl_v2{dscount,1});
+                    else
+                        Dall2{1,dscount} = Dall2{1,dscount};
+                    end
+                else
+                    disp('0Oops! Feedback field does not exist in current dataset.');
+                    Dall2{1,dscount} = Dall2{1,dscount};
+                    indx2exl_v2{dscount,1} = [];
+                end
+                trialnum_vid2 = trialnum_vid2 + size(Dall2{1,dscount}, 3);
+            end
+        else
+            
+            for dscount1 = 1:length(filenoms)
+                
+               trialnum_vid2 = trialnum_vid2 + size(Dall2{1,dscount1},3); 
+                
+            end
+            
+        end
+        
+    end % end of vidcntr1
+end %end of if vidcond2
