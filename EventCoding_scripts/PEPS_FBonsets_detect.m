@@ -9,7 +9,7 @@
 close all;
 clear all;
 
-curr_suj = 'S25';
+curr_suj = 'S37';
 film_num = 4;
 Dirbase = fullfile(filesep,'Users','bolger','Documents','work','Projects','Project-BrainIHM','Data_for_trigger_correct',curr_suj,filesep);
 Savebase = fullfile(filesep,'Users','bolger','Documents','work','Projects','Project-BrainIHM','Data_for_trigger_correct',curr_suj,filesep);
