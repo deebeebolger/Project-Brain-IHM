@@ -2,10 +2,10 @@
 % Load in the excel file with trigger information for the current
 % participant.
 
-curr_suj = 'S40';
-curr_film = 'S40-Film4';
+curr_suj = 'S01';
+curr_film = 'S01-Film4';
 curr_vid  = 'Curare-Human-Incongruent';
-compfile  = 'S40_CompareTriggers_Juin2022.xlsx';
+compfile  = 'S01_CompareTriggers_Juin2022.xlsx';
 
 
 Dirbase = fullfile(filesep,'Users','bolger','Documents','work','Projects','Project-BrainIHM','Data_for_trigger_correct',curr_suj,filesep);

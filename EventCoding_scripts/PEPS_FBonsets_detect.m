@@ -9,12 +9,12 @@
 close all;
 clear all;
 
-curr_suj = 'S40';
-film_num = 4;
+curr_suj = 'S01';
+film_num = 1;
 Dirbase = fullfile(filesep,'Users','bolger','Documents','work','Projects','Project-BrainIHM','Data_for_trigger_correct',curr_suj,filesep);
 Savebase = fullfile(filesep,'Users','bolger','Documents','work','Projects','Project-BrainIHM','Data_for_trigger_correct',curr_suj,filesep);
 case_spec = 'S01';   % Subject 1 videos 1 and 2 are recorded on same *.bdf file. 
-filenoms01 = logical([1]);
+filenoms01 = logical([0 0 1]);
 
 allfiles= dir(Dirbase);
 fileIndex = find(~[allfiles.isdir]);

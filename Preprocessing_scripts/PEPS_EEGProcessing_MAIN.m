@@ -18,7 +18,7 @@ paramfile_nom = 'parameters-PEPS.txt';  % The title of the parameters file.
 % The path to the parameters path. This should be the only path that needs
 % to be changed.
 
-paramfile_path = fullfile(filesep,'Users','bolger','Brain-IHM','Data_Preproc',paramfile_nom); % Put the path to your parameters file here. 
+paramfile_path = fullfile(filesep,'Users','bolger','matlab', 'Projects', 'Project_BrainIHM','Preprocessing_scripts',paramfile_nom); % Put the path to your parameters file here. 
 
 fid2 = fopen(paramfile_path);  % Define a file identifier.
 mydata = textscan(fid2,'%s %s');  % Scan textfile...

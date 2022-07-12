@@ -1,0 +1,8 @@
+Datadir /Users/bolger/Documents/work/Projects/Project-BrainIHM/Data_for_trigger_correct
+Savedir /Users/bolger/Documents/work/Projects/Project-BrainIHM/DataTriggerCorrect_Preprocessing
+Chanlocdir /Users/bolger/Documents/MATLAB/eeglab2020_0/plugins/dipfit/standard_BESA/standard-10-5-cap385.elp
+Audiodir /Volumes/deepassport/Projects/Project-PEPs/PEPS-protocol-phase2/Audio-Files/Marker-Files-doctor
+srate 512
+fc_low 0.1
+fc_hi 40
+references average
