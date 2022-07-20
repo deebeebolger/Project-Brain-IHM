@@ -28,10 +28,10 @@ for i = 1:length(mydata{1,1})                     % generate a parameters struct
 end
 
 %% OPEN AN EEGLAB SESSION AND LOAD MANUALLY THE FILE TO BE PROCESSED
-suj = 's40';
-sujnom = 's40-Film4';
+suj = 'S40';
+sujnom = 'S40-Film4';
 sujdir = fullfile(Params.Datadir{1,1},suj,sujnom,filesep);
-currfile = dir(strcat(sujdir,'*doctrigs.set'));
+currfile = dir(strcat(sujdir,'*Trigcorr2.set'));
 currtitre = currfile.name;
 currfnom = currfile.name(1:end-4);
 
@@ -48,6 +48,23 @@ eeglab redraw;
 % From EEGLAB plugins, the file, "standard-10-5-cap385.elp" is loaded
 % as this contains the correct coordinates for the 10-20 system used here.
 chanloc_path = Params.Chanlocdir{1,1};
+
+% Test if the current subject folder exists. If not, create it.
+myfolder = fullfile(Params.Savedir{1,1},suj);
+if ~exist(myfolder, 'dir')
+    mkdir(myfolder)
+    fprintf('Creating folder %s\n', suj)
+else
+    fprintf('The folder %s already exits\n', suj);
+end
+
+if ~exist(fullfile(myfolder, sujnom), 'dir')
+    mkdir(fullfile(myfolder, sujnom, filesep))
+    fprintf('Creating folder %s\n', sujnom)
+else
+    fprintf('The necessary folders exist for the current subject, %s _ %s\n', suj, sujnom)
+end
+
 DIRsave_curr = fullfile(Params.Savedir{1,1},suj,sujnom,filesep);
 
 fnom_chans = strcat(currfnom,'-chan');

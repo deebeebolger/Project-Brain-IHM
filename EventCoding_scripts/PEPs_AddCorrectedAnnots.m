@@ -16,7 +16,7 @@
 % There is a sheet per List number.
 
 
-currsuj = 'S01';
+currsuj = 'S20';
 fcnt    = 2;
 
 sujs_lists = 'SubjectLists_Summary.xlsx';
